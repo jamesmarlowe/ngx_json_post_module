@@ -98,7 +98,6 @@ static ngx_int_t
 ngx_json_post_handler(ngx_http_request_t *r)
 {
     ngx_json_post_ctx_t       *ctx;
-    ngx_str_t                  value;
     ngx_int_t                  rc;
 
     ngx_log_error(NGX_LOG_DEBUG , r->connection->log, 0,
@@ -150,8 +149,7 @@ ngx_json_post_handler(ngx_http_request_t *r)
     
 }
 
-static void
-ngx_http_form_input_post_read(ngx_http_request_t *r)
+static void ngx_json_post_read(ngx_http_request_t *r)
 {
     ngx_json_post_ctx_t     *ctx;
 
