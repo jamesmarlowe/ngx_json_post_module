@@ -31,7 +31,7 @@ static char *ngx_json_post_conf_handler(ngx_conf_t *cf,
 static ngx_command_t ngx_json_post_commands[] = {
 
     { ngx_string("json_decode"),
-      NGX_HTTP_LOC_CONF,
+      NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
       ngx_json_post_conf_handler,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -56,8 +56,8 @@ static ngx_http_module_t ngx_json_post_module_ctx = {
 
 ngx_module_t  ngx_json_post_module = {
     NGX_MODULE_V1,
-    &ngx_json_post_module_ctx,        /* module context */
-    ngx_json_post_commands,           /* module directives */
+    &ngx_json_post_module_ctx,             /* module context */
+    ngx_json_post_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -154,14 +154,13 @@ static void ngx_json_post_read(ngx_http_request_t *r)
     ngx_json_post_ctx_t     *ctx;
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
-                   "http form_input post read request body");
+                   "ngx_json_post post read request body");
 
     ctx = ngx_http_get_module_ctx(r, ngx_json_post_module);
 
     ctx->done = 1;
 
 #if defined(nginx_version) && nginx_version >= 8011
-    dd("count--");
     r->main->count--;
 #endif
 
