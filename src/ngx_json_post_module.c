@@ -22,9 +22,10 @@ typedef struct
   unsigned          waiting_more_body:1;
 } ngx_json_post_ctx_t;
 
+static ngx_int_t ngx_json_post_init(ngx_conf_t *cf);
+static ngx_int_t ngx_json_post_handler(ngx_http_request_t *r);
+static void ngx_json_post_read(ngx_http_request_t *r);
 static char *ngx_json_post_conf_handler(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf);
-static char *ngx_json_post_module_command(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
     
 static ngx_command_t ngx_json_post_commands[] = {
@@ -76,7 +77,7 @@ ngx_json_post_init(ngx_conf_t *cf)
     ngx_http_handler_pt             *h;
     ngx_http_core_main_conf_t       *cmcf;
 
-    if (!ngx_http_form_input_used) {
+    if (!ngx_json_post_used) {
         return NGX_OK;
     }
     
@@ -96,7 +97,7 @@ ngx_json_post_init(ngx_conf_t *cf)
 static ngx_int_t
 ngx_json_post_handler(ngx_http_request_t *r)
 {
-    ngx_json_post_conf_t       *ctx;
+    ngx_json_post_ctx_t       *ctx;
     ngx_str_t                  value;
     ngx_int_t                  rc;
 
@@ -120,7 +121,7 @@ ngx_json_post_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
     
-    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_form_input_ctx_t));
+    ctx = ngx_pcalloc(r->pool, sizeof(ngx_json_post_ctx_t));
     if (ctx == NULL) {
         return NGX_ERROR;
     }
@@ -130,7 +131,7 @@ ngx_json_post_handler(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                    "ngx_json_post start to read client request body");
     
-    rc = ngx_http_read_client_request_body(r, ngx_http_form_input_post_read);
+    rc = ngx_http_read_client_request_body(r, ngx_json_post_read);
     
     if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
         return rc;
@@ -149,20 +150,34 @@ ngx_json_post_handler(ngx_http_request_t *r)
     
 }
 
+static void
+ngx_http_form_input_post_read(ngx_http_request_t *r)
+{
+    ngx_json_post_ctx_t     *ctx;
+
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                   "http form_input post read request body");
+
+    ctx = ngx_http_get_module_ctx(r, ngx_json_post_module);
+
+    ctx->done = 1;
+
+#if defined(nginx_version) && nginx_version >= 8011
+    dd("count--");
+    r->main->count--;
+#endif
+
+    /* waiting_more_body my rewrite phase handler */
+    if (ctx->waiting_more_body) {
+        ctx->waiting_more_body = 0;
+
+        ngx_http_core_run_phases(r);
+    }
+}
+
 static char *ngx_json_post_conf_handler(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf)
 {
     ngx_json_post_used = 1;
-    return NGX_CONF_OK;
-}
-
-static char *ngx_json_post_module_command(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf)
-{
-    ngx_http_core_loc_conf_t  *clcf;
-
-    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    clcf->handler = ngx_json_post_handler;
-
     return NGX_CONF_OK;
 }
